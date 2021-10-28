@@ -22,8 +22,24 @@ async function run (){
         // GET API
         app.get('/products', async(req, res)=>{
             const cursor = productCollection.find({});
-            const products = await cursor.toArray();
-            res.send(products);
+            // console.log(req.query);
+            const page = req.query.page;
+            const size = parseInt(req.query.size);
+            // console.log(page, size)
+            // console.log(typeof(page))
+            // console.log(typeof(size))
+            let products;
+            const count = await cursor.count();
+            if (page) {
+                products = await cursor.skip(page*size).limit(size).toArray();
+            } else {
+                products = await cursor.toArray();
+            }
+            
+            res.send({
+                count,
+                products
+            });
         })
     }
     finally{
