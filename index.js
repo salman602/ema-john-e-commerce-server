@@ -18,8 +18,9 @@ async function run (){
         await client.connect();
         const database = client.db("online_shop");
         const productCollection = database.collection("products");
+        const orderCollection = database.collection("orders");
 
-        // GET API
+        // GET products API
         app.get('/products', async(req, res)=>{
             const cursor = productCollection.find({});
             // console.log(req.query);
@@ -40,6 +41,23 @@ async function run (){
                 count,
                 products
             });
+        });
+
+        // use POST to get products by keys
+        app.post('/products/byKeys', async (req, res) =>{
+            console.log(req.body);
+            const keys = req.body;
+            const query = {key: {$in: keys}};
+            const products = await productCollection.find(query).toArray();
+            res.json(products);
+        });
+
+        // Order post
+        app.post('/orders', async(req, res) => {
+            const order = req.body;
+            // console.log(order);
+            const result = await orderCollection.insertOne(order);
+            res.json(result);
         })
     }
     finally{
