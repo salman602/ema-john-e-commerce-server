@@ -1,9 +1,21 @@
 const express = require('express');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
+// import firebase admin
+var admin = require("firebase-admin");
+
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
+
+
+// firebase admin initializer
+
+var serviceAccount = require('./ema-john-firebase-2dceb-firebase-adminsdk-apyso-c73af40836.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 
 // Middle Ware
@@ -12,6 +24,20 @@ app.use(express.json())
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.v2tgv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function verifyToken (req, res, next){
+    if(req.headers.authorization){
+        const idToken = req.headers.authorization.split(' ')[1];
+        try {
+            const decodedUser = await admin.auth().verifyIdToken(idToken);
+            // console.log(decodedUser.email);
+            req.decodedUserEmail = decodedUser.email;
+        } catch (error) {
+            
+        }
+    }
+    next()
+}
 
 async function run() {
     try {
@@ -54,19 +80,20 @@ async function run() {
 
         // Order post
 
-        app.get('/orders', async (req, res) => {
-            let query = {};
+        app.get('/orders', verifyToken, async (req, res) => {
+            
             const email = req.query.email;
+            // console.log(req.decodedUserEmail);
+            if(req.decodedUserEmail === email){
+                const query = {email: email}
+                const cursor = orderCollection.find(query);
+                const result = await cursor.toArray();
+                res.json(result);
 
-            if (email) {
-                query = {email: email}
+            } else{
+                res.status(401).json({message: 'Unauthoirzed user'});
             }
-            const cursor = orderCollection.find(query);
 
-            console.log(query)
-
-            const result = await cursor.toArray();
-            res.json(result);
         })
 
         app.post('/orders', async (req, res) => {
